@@ -37,9 +37,9 @@ def clerk():
         conn.commit()
         print("User updated")
 
-    elif requestType == "session.created":
-        session['clerkId'] = clerkId
-        print("session ::::::::" ,session.get('clerkId'))
+    # elif requestType == "session.created":
+    #     session['clerkId'] = clerkId
+    #     print("session ::::::::" ,session.get('clerkId'))
 
 
     conn.close()

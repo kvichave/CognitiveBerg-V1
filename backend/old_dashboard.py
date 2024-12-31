@@ -69,7 +69,7 @@ def store_user():
     print(":::data:::",data['user_id'])
     session['user_id'] = data['user_id']
     session['email'] = data['email']
-    print("sessuion id::::::::: ",session.get('user_id'))
+    
     return data['user_id']
 
     # user_id = data.get('user_id')

@@ -32,6 +32,11 @@ export default function MicrophoneComponent() {
     websocketRef.current.on("connect", () => {
       console.log("WebSocket connection established");
     });
+    websocketRef.current.on("interview_end", () => {
+      console.log("WebSocket connection established");
+      router.push("/dashboard");
+    });
+
     websocketRef.current.on("audio_urls", (files) => {
       console.log("WebSocket audio_urls event received", files.files);
       // console.log(
@@ -324,8 +329,10 @@ export default function MicrophoneComponent() {
                 </button>
               )}
             </div>
-            <div
-              onClick={() => router.push("/report")}
+            <a
+              href="http://127.0.0.1:5000/generatereport"
+              // onClick={() => router.push("/generate")}
+
               className="m-auto border bg-black border-black rounded w-fit h-fit p-4 flex items-center justify-center -mb-24 mt-24"
             >
               <svg
@@ -343,7 +350,7 @@ export default function MicrophoneComponent() {
                 />
               </svg>
               Generate Report
-            </div>
+            </a>
 
             {/* {speakers.length > 0 ? (
               speakers.map((user) => (

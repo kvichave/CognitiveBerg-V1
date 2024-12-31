@@ -5,7 +5,7 @@ import { BackgroundLines } from "/home/kunal/Documents/CognitiveBerg/components/
 import { FlipWords } from "/home/kunal/Documents/CognitiveBerg/components/ui/flip-words";
 import { LampContainer } from "/home/kunal/Documents/CognitiveBerg/components/ui/lamp.jsx";
 import { motion } from "framer-motion";
-import { SignedOut, UserButton } from "@clerk/nextjs";
+import { SignedOut, SignedIn, UserButton } from "@clerk/nextjs";
 
 export default function Home() {
   const words = [
@@ -45,7 +45,7 @@ export default function Home() {
           improve them in <FlipWords words={words} />
         </div>
       </div>
-
+      <SignedIn>helloooooooooo</SignedIn>
       <SignedOut>
         <LampContainer>
           <motion.h1
@@ -59,7 +59,7 @@ export default function Home() {
             className="mt-8 bg-gradient-to-br from-slate-300 to-slate-500 py-4 bg-clip-text text-center text-4xl font-medium tracking-tight text-transparent md:text-7xl"
           >
             Let's Begin <br /> Signup
-            <div class="text-xl mt-8 items-center justify-center">
+            <div className="text-xl mt-8 items-center justify-center">
               <button
                 onClick={() => router.push("/auth/sign-up")}
                 className="px-4 mr-4 py-1 rounded-lg shadow-lg  text-white  bg-blue-500 hover:bg-blue-900 transition"

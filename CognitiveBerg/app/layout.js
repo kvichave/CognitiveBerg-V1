@@ -1,6 +1,7 @@
 import { Inter } from "next/font/google";
 import "./globals.css";
-import { ClerkProvider, SignedIn, SignedOut, SignIn } from "@clerk/nextjs";
+import { ClerkProvider } from "@clerk/nextjs";
+import SyncUserSession from "./syncusersession"; // Import the new component
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -14,10 +15,7 @@ export default function RootLayout({ children }) {
     <ClerkProvider>
       <html lang="en">
         <body className={inter.className}>
-          {/* <SignedOut>
-            <SignIn routing="hash"></SignIn>
-          </SignedOut> */}
-
+          <SyncUserSession /> {/* This handles session syncing */}
           {children}
         </body>
       </html>

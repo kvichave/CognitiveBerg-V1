@@ -2,6 +2,8 @@ import edge_tts
 from groq import Groq
 import json
 import asyncio
+from chat_CRUD import add_data
+
 
 client = Groq(api_key="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")
 
@@ -15,62 +17,7 @@ class App:
         "toimprove": ["technical", "communication"]
     }
 
-    # prompt = [
-    #     {
-    #         "role": "system",
-    #         "content": '''You are a interview panel for a fresher software developer position. Design three professional interviewers, each with a distinct role and responsibility suited to the job profile.
-    # Users Profile:'''+str(userDetails)+'''
 
-    # Begin the interview by introducing each interviewer in a conversational manner. Each introduction should be concise and engaging, setting a realistic tone for the session.
-
-    # Once the introductions are complete, the first interviewer should ask the first question and the conversation should continue in a fluid and interactive manner. After each question, the conversation will naturally pass to another interviewer when context is completed, with no history of previous responses included in the output.
-
-    # The structure of the conversation should be presented as JSON, ensuring it includes only the latest question and response, formatted correctly.
-
-    # The introduction should follow this format (don't append the first question in the introduction):
-
-    # [
-    # {
-    #     "interviewer_name": "Rajesh Sharma, Engineering Manager",
-    #     "message": "Hello, I'm Rajesh Sharma, the Engineering Manager for the backend team. I'll be leading this interview today.",
-    #     "id": 0
-    # },
-    # {
-    #     "interviewer_name": "Emily Patel, Senior Backend Developer",
-    #     "message": "Hi, I'm Emily Patel, a Senior Backend Developer on the team. I'll be assessing your technical skills and project-related experiences.",
-    #     "id": 1
-    # },
-    # {
-    #     "interviewer_name": "David Lee, Technical Recruiter",
-    #     "message": "Hello, I'm David Lee, the Technical Recruiter who coordinated this process. I'll be observing your communication skills and taking notes during the session.",
-    #     "id": 2
-    # }
-    # ]
-    # Start the conversation with the introductions only. After the first output (introduction), the first interviewer may begin the interview with the first question. Future questions and responses should be passed fluidly between the interviewers, ensuring smooth transitions and an engaging conversation.
-    # Output format after introduction example:
-    # {
-    # "interviewer_name": "Rajesh Sharma, Engineering Manager (modify)",
-    # "message": "Hello, I'm Rajesh Sharma, the Engineering Manager for the backend team. I'll be leading this interview today. (modify)",
-    # "id": 0
-    # }
-
-    # STRICT_CONSTRAINTS="THE FIRST RESPONSE SHOULD BE THE INTRODUCTION ONLY,
-    # DONT ADD FURTHER QUESTIONS WITH INTRODUCTION,
-    # DONT ADD ANY EXTRA STATEMENTS IN THE OUTPUT,
-    # GIVE OUTPUT AS JSON,
-    # IN OUTPUT JSON- PROPERTY NAME ENCLOSED IN DOUBLE QUOTE,
-
-
-
-    # "
-    # IN OUTPUT JSON- PROPERTY NAME ENCLOSED IN DOUBLE QUOTE,
-    # FOLLOW THE STRICT_CONSTRAINTS COMPALORY
-    # the 
-    # IMPORTANT-(property names should be enclosed in double quote only,
-    # ensure proper JSON formatting)
-    # '''
-    #     },
-    # ]
     prompt = [
         {
             "role": "system",
@@ -83,6 +30,25 @@ Your task:
 2. Each introduction should be concise and engaging, setting a realistic tone for the session.
 3. Ensure the response only includes the introduction for the first output.
 4. The introduction should not include questions or any extra details beyond the stated roles.
+
+Design an interview process tailored for different experience levels and interview types:
+
+Experience Levels:
+
+1. Fresher (0-1 years): Focus on basic concepts and fundamental knowledge.
+Experienced (2-5 years): Evaluate advanced technical skills, project work, and team collaboration.
+Professional (5-10 years): Assess strategic thinking, leadership skills, and domain expertise.
+Interview Types:
+
+2. Technical Interview: Test candidates' proficiency in specific technical skills, coding, algorithms, and problem-solving abilities.
+HR Interview: Evaluate communication skills, career goals, and cultural fit.
+Other Interviews (e.g., Behavioral, Managerial): Examine adaptability, decision-making, and real-life problem-solving skills.
+Output Details Required:
+
+3. Number of questions for each interview type per experience level.
+Areas to cover within each type (e.g., coding, teamwork, leadership).
+Example questions for each combination of experience and interview type.
+
 
 **Output Format for the Introduction** (ensure strict compliance):
 {"data":[
@@ -108,6 +74,7 @@ Your task:
 2. The JSON output must be valid and properly formatted. 
 3. The first response should consist only of the introduction in the specified format, with no additional statements or questions.
 4. Do not include extraneous elements or variations in the output.
+5. Keep the ending format in mind
 
 In subsequent outputs, interview questions will be asked by one interviewer at a time, and responses from the candidate will continue naturally. Each exchange must follow a JSON structure similar to:
 {"data":[{
@@ -116,6 +83,8 @@ In subsequent outputs, interview questions will be asked by one interviewer at a
     "id": <interviewer_id>
 }]}
 
+To end the Interview give json output as:
+{"FLAG":"END"}
 **Initial Output Expectation:**
 Generate the introduction of all interviewers in the exact JSON format described, without deviations.
 
@@ -167,12 +136,20 @@ Generate the introduction of all interviewers in the exact JSON format described
         #     reply = "[" + str(completion.choices[0].message.content) + "]"
 
         reply = json.loads(reply)
-        reply=reply["data"]
-        if add_to_history:
-            self.prompt.append({"role": "assistant", "content": str(reply)})
-        self.LLM_reply=reply
-        print("reply", reply)
-        self.speakers(reply)
+        if reply.get("FLAG") == "END":
+            add_data(self.prompt[1:],usetype=str(self.userDetails['scenario']))
+            self.LLM_reply=reply.get("FLAG")
+
+            print("reply", reply)
+            return "END"
+        else:
+            reply=reply["data"]
+            if add_to_history:
+                self.prompt.append({"role": "assistant", "content": str(reply)})
+            self.LLM_reply=reply
+            
+            print("reply", reply)
+            self.speakers(reply)
 
     def text_to_speech(self, text, output_file, voice):
         """Synchronously converts text to speech using edge-tts and saves the audio as an MP3 file."""
@@ -204,3 +181,6 @@ Generate the introduction of all interviewers in the exact JSON format described
 
         print("Generated audio files:", self.outputPaths)  # Ensure this shows the populated list
         return self.outputPaths  # Return the populated list
+
+
+
