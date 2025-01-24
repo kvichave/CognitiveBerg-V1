@@ -21,7 +21,7 @@ export function Interviewercard({ isSpeaking, userName, imageLink }) {
       <BackgroundGradient
         isSpeaking={isSpeaking}
         animate={animate} // Pass the dynamic animation state here
-        className="rounded-[22px] w-96  max-w-sm p-4 sm:p-10 bg-white dark:bg-white"
+        className="rounded-[22px] w-64  max-w-sm p-4 sm:p-10 bg-white dark:bg-white"
       >
         <Image
           src={

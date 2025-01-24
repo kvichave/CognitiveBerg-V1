@@ -24,7 +24,7 @@ def handle_start():
 
 @socketio.on("audio_chunk")
 def handle_audio_chunk(audio_data):
-    print("receiving")
+    # print("receiving")
 
     global audio_file
     if audio_file:
@@ -124,3 +124,4 @@ def new():
 def wow():
     obj=gemini_class()
     obj.groq_whisper(input="received_audio/recording.wav",image="second.png")
+    

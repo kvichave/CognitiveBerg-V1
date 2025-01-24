@@ -24,6 +24,12 @@ export default function MicrophoneComponent() {
   const [firstLoad, setFirstLoad] = useState(true);
   const [initialData, setInitialData] = useState(null);
   const [speakers, setSpeakers] = useState([]);
+  const [audioContext, setAudioContext] = useState(null);
+  const [analyser, setAnalyser] = useState(null);
+  const silenceTimeoutRef = useRef(null);
+  const animationFrameRef = useRef(null);
+  const [voice_detected, setVoice_detected] = useState(false);
+
   useEffect(() => {
     websocketRef.current = io("http://localhost:5000", {
       transports: ["websocket"],
@@ -32,12 +38,31 @@ export default function MicrophoneComponent() {
     websocketRef.current.on("connect", () => {
       console.log("WebSocket connection established");
     });
+
+    // Initialize voice detection
+    const initializeVoiceDetection = async () => {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({
+          audio: true,
+        });
+        detectSilence(stream);
+        console.log("Voice detection initialized");
+      } catch (error) {
+        console.error("Error initializing voice detection:", error);
+      }
+    };
+
+    initializeVoiceDetection();
+
     websocketRef.current.on("interview_end", () => {
       console.log("WebSocket connection established");
       router.push("/dashboard");
     });
 
     websocketRef.current.on("audio_urls", (files) => {
+      if (isRecording) {
+        stopRecording();
+      }
       console.log("WebSocket audio_urls event received", files.files);
       // console.log(
       //   "WebSocket audio_urls event received",
@@ -90,40 +115,145 @@ export default function MicrophoneComponent() {
 
   //   fetchDataOnLoad();
   // }, []);
+  const detectSilence = (
+    stream,
+    silenceThreshold = -30,
+    silenceDuration = 2000
+  ) => {
+    const audioContext = new AudioContext();
+    const analyser = audioContext.createAnalyser();
+    const microphone = audioContext.createMediaStreamSource(stream);
+    microphone.connect(analyser);
+
+    analyser.fftSize = 2048;
+    const bufferLength = analyser.frequencyBinCount;
+    const dataArray = new Float32Array(bufferLength);
+
+    setAudioContext(audioContext);
+    setAnalyser(analyser);
+
+    const checkAudioLevel = () => {
+      analyser.getFloatTimeDomainData(dataArray);
+      let sumSquares = 0.0;
+      for (const amplitude of dataArray) {
+        sumSquares += amplitude * amplitude;
+      }
+      const volume = Math.sqrt(sumSquares / dataArray.length);
+      var volumeDb = 20 * Math.log10(volume);
+
+      console.log("Current volume:", volumeDb, "isRecording:", isRecording);
+
+      if (volumeDb > silenceThreshold) {
+        // Sound detected
+        if (!isRecording && !isPlaying) {
+          console.log("Sound detected, starting recording");
+          // startRecording();
+          setVoice_detected(true);
+          setIsRecording(true);
+          console.log("lets check isRecording", isRecording);
+        }
+        // Clear any existing silence timeout
+        if (silenceTimeoutRef.current) {
+          console.log("Clearing silence timeout");
+          clearTimeout(silenceTimeoutRef.current);
+          silenceTimeoutRef.current = null;
+        }
+      } else {
+        // Silence detected
+        // console.log(
+        //   "Silence detected, isRecording:",
+        //   isRecording,
+        //   "silenceTimeoutRef:",
+        //   silenceTimeoutRef.current
+        // );
+        if (!silenceTimeoutRef.current) {
+          console.log("Setting silence timeout");
+          silenceTimeoutRef.current = setTimeout(() => {
+            console.log("Stopping recording due to silence");
+            stopRecording();
+            setVoice_detected(false);
+
+            console.log("stopped recording");
+            setIsRecording(false);
+            silenceTimeoutRef.current = null; // Clear the timeout reference
+          }, silenceDuration);
+        }
+      }
+
+      animationFrameRef.current = requestAnimationFrame(checkAudioLevel);
+    };
+
+    checkAudioLevel();
+  };
+
+  useEffect(() => {
+    if (voice_detected === true) {
+      startRecording();
+    }
+  }, [voice_detected]);
+
   const startRecording = async () => {
-    setIsRecording(true);
-    audioChunksRef.current = [];
+    console.log("startRecording", isRecording);
+    // if (!isRecording) return;
 
     try {
-      // Access user's microphone
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       mediaRecorderRef.current = new MediaRecorder(stream);
-
+      // if (isRecording)
       mediaRecorderRef.current.ondataavailable = (event) => {
         if (websocketRef.current && event.data.size > 0) {
           const reader = new FileReader();
           reader.onload = () => {
             const audioBuffer = reader.result;
             websocketRef.current.emit("audio_chunk", audioBuffer);
-            console.log("sending audio chunk");
           };
           reader.readAsArrayBuffer(event.data);
         }
       };
 
+      // Set recording state before starting
+      setIsRecording(true);
+      audioChunksRef.current = [];
+
       mediaRecorderRef.current.start(200);
       websocketRef.current.emit("start");
-      console.log("Recording started");
+      console.log("Recording started successfully, isRecording:", isRecording);
 
       mediaRecorderRef.current.onstop = () => {
         setIsRecording(false);
-        var use = "interview";
-        websocketRef.current.emit("stop", use);
-        console.log("Recording stopped");
+        websocketRef.current.emit("stop", "interview");
+        console.log("Recording stopped, isRecording:", false);
       };
     } catch (error) {
-      console.error("Error accessing microphone:", error);
+      console.error("Error starting recording:", error);
+      setIsRecording(false);
     }
+  };
+
+  const stopRecording = () => {
+    // if (!isRecording) return;
+
+    console.log("SSSSSSSSSSSSSSSSSSSSSSS recording...");
+
+    if (
+      mediaRecorderRef.current &&
+      mediaRecorderRef.current.state === "recording"
+    ) {
+      mediaRecorderRef.current.stop();
+      mediaRecorderRef.current.stream
+        .getTracks()
+        .forEach((track) => track.stop());
+      mediaRecorderRef.current = null;
+    }
+
+    // Clear the silence timeout
+    if (silenceTimeoutRef.current) {
+      clearTimeout(silenceTimeoutRef.current);
+      silenceTimeoutRef.current = null;
+    }
+
+    setIsRecording(false);
+    console.log("Recording stopped successfully");
   };
 
   useEffect(() => {
@@ -167,17 +297,6 @@ export default function MicrophoneComponent() {
     }
   }, [currentIndex, isPlaying, audiourls]);
 
-  const stopRecording = () => {
-    if (mediaRecorderRef.current) {
-      mediaRecorderRef.current.stop();
-      setRecordingComplete(true);
-      setIsRecording(false);
-      mediaRecorderRef.current.stream
-        .getTracks()
-        .forEach((track) => track.stop());
-      mediaRecorderRef.current = null;
-    }
-  };
   const updateSpeakers = () => {
     setSpeakers((prevSpeakers) =>
       prevSpeakers.map((interviewer) => ({
@@ -198,10 +317,12 @@ export default function MicrophoneComponent() {
   };
 
   const handleToggleRecording = () => {
-    if (!isRecording) {
-      startRecording();
-    } else {
+    console.log("Button clicked, isRecording", isRecording);
+    if (isRecording) {
       stopRecording();
+      // setIsRecording(false);
+    } else {
+      startRecording();
     }
   };
 
@@ -215,6 +336,16 @@ export default function MicrophoneComponent() {
       // Stop recording if active and release resources
       if (mediaRecorderRef.current) {
         stopRecording();
+      }
+
+      if (animationFrameRef.current) {
+        cancelAnimationFrame(animationFrameRef.current);
+      }
+      if (silenceTimeoutRef.current) {
+        clearTimeout(silenceTimeoutRef.current);
+      }
+      if (audioContext) {
+        audioContext.close();
       }
     };
   }, []);
