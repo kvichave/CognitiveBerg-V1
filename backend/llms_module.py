@@ -4,7 +4,6 @@ import json
 import asyncio
 from chat_CRUD import add_data
 
-
 client = Groq(api_key="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")
 
 class App:
@@ -98,17 +97,24 @@ Generate the introduction of all interviewers in the exact JSON format described
 
     def groq_whisper(self, input, add_to_history=True):
         print("in Whisper")
-        with open(input, "rb") as file:
-            transcription = client.audio.transcriptions.create(
-                file=(input, file.read()),
-                model="whisper-large-v3-turbo",
-                response_format="verbose_json",
-            )
-            reply = str(transcription.text)
+        try:
+            with open(input, "rb") as file:
+                transcription = client.audio.transcriptions.create(
+                    file=(input, file.read()),
+                    model="whisper-large-v3-turbo",
+                    response_format="verbose_json",
+                )
+                reply = str(transcription.text)
 
-            if add_to_history:
-                self.prompt.append({"role": "user", "content": reply})
-            self.gorq_LLM(prompt=self.prompt)
+                if add_to_history:
+                    self.prompt.append({"role": "user", "content": reply})
+                print("whisper :: ",reply)
+
+                self.gorq_LLM(prompt=self.prompt)
+        except Exception as e:
+            print("error in Whisper:::",e)
+            return "reset"
+
 
     def gorq_LLM(self, prompt, add_to_history=True):
         print("in LLM")
@@ -375,12 +381,13 @@ Ensure that the LLM emulates realistic, natural investor interactions during the
         print("in LLM")
         # Synchronous API call to the LLM
         if image:
-            file = PIL.Image.open(image)
+            file1 = PIL.Image.open("received_img/screenshot1.jpg")
+            file2 = PIL.Image.open("received_img/screenshot2.jpg")
 
-            response = self.chat_session.send_message([file, reply])
+            response = self.chat_session.send_message([file1,file2, reply])
         
         else:
-            response = self.chat_session.send_message( reply)
+            response = self.chat_session.send_message(reply)
 
         # reply = reply.replace("'", '"')
         # reply = reply.replace('\\"', "'")
@@ -423,6 +430,8 @@ Ensure that the LLM emulates realistic, natural investor interactions during the
             0: "en-US-BrianNeural",
             1: "en-IN-NeerjaExpressiveNeural",
             2: "en-US-ChristopherNeural",
+            3: "en-US-EricNeural",
+            4: "en-US-AriaNeural"
         }
         for investor in json_data:
             if investor.get("message") is None:

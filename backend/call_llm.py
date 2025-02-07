@@ -12,8 +12,13 @@ socketio = SocketIO(cors_allowed_origins="*")  # Use async mode for Flask-Socket
 
 audio_file = None
 objectApp = App()
+GEMINIobj=gemini_class()
+
 saved_prompt=None
 wav_file_path = "received_audio/recording.wav"
+
+# Global variable for storing image chunks
+image_chunks_data = []
 
 @socketio.on("start")
 def handle_start():
@@ -30,13 +35,53 @@ def handle_audio_chunk(audio_data):
     if audio_file:
         print(f"Received chunk of size: {len(audio_data)} bytes")
         audio_file.write(audio_data)
+img_counter=1
+@socketio.on('screen_capture')
+def handle_image_chunk(data):
+    image_data = data
+    global img_counter
+    if img_counter<3:
+        image_path = f'received_img/screenshot{img_counter}.jpg'
+        if img_counter==2:
+            img_counter=1
+        else:
+            img_counter+=1
 
+    # else:
+    #     img_counter=1
+    if isinstance(data, dict):
+        image_data = data.get('image', '')
+    
+    # Remove data URL prefix if present
+    if 'base64,' in image_data:
+        base64_data = image_data.split('base64,')[1]
+    else:
+        base64_data = image_data
+        
+    # Decode and save image
+    import base64
+    image_bytes = base64.b64decode(base64_data)
+    
+    with open(image_path, 'wb') as f:
+        f.write(image_bytes)
+        
+    print(f"Screenshot saved: {image_path}")
+    return {"success": True, "path": image_path}
 
+def save_image(base64_image):
+    import base64
+
+    # Remove "data:image/png;base64," prefix
+    base64_image = base64_image.split(",")[1]
+
+    with open("captured_image.png", "wb") as f:
+        f.write(base64.b64decode(base64_image))
+        print("Image saved as 'captured_image.png'")
 
 @socketio.on("stop")
-def on_stop(use):
-    print("flask Stopping recording...  ",use)
-    
+def on_stop(data):
+    print("flask Stopping recording...  ",data.get("type"))
+    # print("IMAGEEEE...  ",data.get("image"))
     global audio_file
     try:
 
@@ -45,8 +90,14 @@ def on_stop(use):
             print(f"Recording stopped and saved at {wav_file_path}")
             
             # Await the async method call
-            if use == "interview":
-                objectApp.groq_whisper(wav_file_path, add_to_history=True)
+            if data.get("type") == "interview":
+                whisper_object=objectApp.groq_whisper(wav_file_path, add_to_history=True)
+                if whisper_object=="reset":
+                    if audio_file:
+                        audio_file.close()
+                        print("File closed due to client disconnect.")
+                        audio_file = None
+                    handle_start()
                 audio_urls = [f'http://127.0.0.1:5000/audios/{file.split("/")[-1]}' for file in objectApp.outputPaths]
                 interviewers=objectApp.LLM_reply
                 if interviewers =="END":
@@ -56,8 +107,14 @@ def on_stop(use):
                 print("Generated audio paths:", audio_urls)
                 socketio.emit("audio_urls", {"files": audio_urls,"interviewers":interviewers})
 
-            elif use == "bmeeting":
-                pass
+            elif data.get("type") == "bmeeting":
+                GEMINIobj.groq_whisper(input=wav_file_path,image=True)
+                audio_urls = [f'http://127.0.0.1:5000/audios/{file.split("/")[-1]}' for file in GEMINIobj.outputPaths]
+                interviewers=GEMINIobj.LLM_reply
+                if interviewers =="END":
+                    socketio.emit("interview_end", {"message": "Interview ended"})
+                print("Generated audio paths:", audio_urls)
+                socketio.emit("audio_urls", {"files": audio_urls,"interviewers":interviewers})
 
     except Exception as e:
         print(f"Error during transcription: {e}")
@@ -91,6 +148,16 @@ def handle_disconnect():
         audio_file = None
     print("Client disconnected")
 
+
+
+@call_LLm.route("/wow",methods=['GET'])
+def wow():
+    obj=gemini_class()
+    obj.groq_whisper(input="received_audio/recording.wav",image="second.png")
+    
+
+
+
 @call_LLm.route('/generatereport',methods=['GET'])
 def new():
     # session["name"] = "kunal"
@@ -100,28 +167,3 @@ def new():
 
 
 
-# @app.route("/report")
-# def gen_report():
-#     global saved_prompt
-#     userhistory={"role":"user","content":"This is the user and model communication => "+str(saved_prompt[1:])}
-#     report_prompt=[
-#         {
-#             "role": "system",
-#             "content": "you are a report generator, \n\nTasks:\n1. analyze the conversation between user and interviewers \n2. deeply analyze the mistakes fluency and grammer of the user in the conversation\n3. deeply analyze the behaviour of the user in the interviewer \n4. provide the output in valid json and output format\n\n\noutput format -\n\n{\n  \"Interview Report\": {\n    \"role\": \"Model\",\n    \"Scenario\": \"Conversation between Model and user\"\n  },\n  \"fluency\": \"7.5\",\n  \"mistakes\": [\n    \"The candidate displayed minor grammatical errors in some responses, particularly in tense usage. For example, in the sentence (specify the sentence), the candidate used the past tense instead of the present tense, leading to a slightly confusing sentence structure.\",\n    \"There were a few instances where the candidate could have used more precise vocabulary to express their thoughts more effectively. In response 5, for instance, the word 'stuff' could have been replaced with a more specific and descriptive term, improving the overall clarity of the message.\",\n    \"While the candidate generally provided relevant information, some responses lacked sufficient detail and could have been expanded upon to provide a more comprehensive answer. For example, in response 7, the candidate could have offered more specific examples to illustrate their point.\"\n  ],\n  \"scores\": {\n    \"clarity\": 8,\n    \"confidence\": 7,\n    \"accuracy\": 6\n  },\n  \"visualization_data\": {\n    \"line_chart_fluency\": [\n      {\n        \"response\": 1,\n        \"fluency_score\": 6\n      },\n      {\n        \"response\": 2,\n        \"fluency_score\": 7\n      },\n      {\n        \"response\": 3,\n        \"fluency_score\": 8\n      },\n      {\n        \"response\": 4,\n        \"fluency_score\": 7\n      },\n      {\n        \"response\": 5,\n        \"fluency_score\": 6\n      },\n      {\n        \"response\": 6,\n        \"fluency_score\": 8\n      },\n      {\n        \"response\": 7,\n        \"fluency_score\": 7\n      }\n    ],\n    \"bar_chart_mistakes\": {\n      \"tenses\": 5,\n      \"word_usage\": 3,\n      \"sentence_structure\": 4\n    },\n    \"pie_chart_communication_clarity\": {\n      \"clarity_score\": 8,\n      \"communication_score\": 7\n    }\n  },\n  \"suggested_improvements\": [\n    \"Improve sentence structure and choice of words.\",\n    \"Pay attention to verb tense consistency.\",\n    \"Provide more detailed and specific explanations.\"\n  ],\n  \"benchmark_comparison\": {\n    \"average_fluency\": \"7.2\",\n    \"average_clarity\": \"7.8\",\n    \"average_accuracy\": \"6.5\"\n  },\n  \"summary\": \"The candidate demonstrates strong clarity and communication skills, but could benefit from improving sentence structure, word choice, and providing more detailed responses for increased accuracy. Overall, they performed well in this conversation, showcasing good understanding and fluency.\"\n}\n"
-#         }
-#     ],
-#     report_prompt.append(userhistory)
-
-#     objectApp.gorq_LLM(prompt=report_prompt, add_to_history=False)
-#     data=objectApp.LLM_reply
-#     print(data)
-#     return{"message": data}
-# if __name__ == "__main__":
-#     socketio.run(app, debug=True)
-
-
-@call_LLm.route("/wow",methods=['GET'])
-def wow():
-    obj=gemini_class()
-    obj.groq_whisper(input="received_audio/recording.wav",image="second.png")
-    

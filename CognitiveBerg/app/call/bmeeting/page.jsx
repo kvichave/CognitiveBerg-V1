@@ -6,8 +6,14 @@ import UserCard from "./userCard";
 import { useEffect, useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { Interviewercard } from "./newCard";
+import { useMicVAD, utils } from "@ricky0123/vad-react";
 
 import { PinContainer } from "/components/ui/3d-pin";
+
+import ScreenCaptureWithPreview from "/components/Screencapture";
+
+const MAX_CHUNK_SIZE = 16 * 1024; // 16 KB per chunk
+
 export default function MicrophoneComponent() {
   const websocketRef = useRef(null);
 
@@ -29,6 +35,120 @@ export default function MicrophoneComponent() {
   const silenceTimeoutRef = useRef(null);
   const animationFrameRef = useRef(null);
   const [voice_detected, setVoice_detected] = useState(false);
+  const [stream, setStream] = useState(null);
+  const [track, setTrack] = useState(null);
+  const [screenshot, setScreenshot] = useState(null);
+  const videoRef = useRef(null);
+
+  // const vad = useMicVAD({
+  //   // model: "v5",
+  //   // baseAssetPath: "/",
+  //   // onnxWASMBasePath: "/",
+  //   startOnLoad: true,
+  //   // onVADMisfire: () => {
+  //   //   console.log("onVDAfire");
+  //   // },
+  //   onSpeechStart: () => {
+  //     console.log("onSpeechStart");
+  //     setIsRecording(true);
+  //     setIsPlaying(false);
+  //     startRecording();
+  //   },
+  //   // onSpeechRealStart: () => {
+  //   //   console.log("onSpeechRealStart");
+  //   // },
+  //   onSpeechEnd: () => {
+  //     console.log("onSpeechEnd");
+  //     setIsRecording(false);
+  //     stopRecording();
+  //     setRecordingComplete(true);
+  //   },
+  // });
+
+  const startScreenCapture = async () => {
+    try {
+      const screenStream = await navigator.mediaDevices.getDisplayMedia({
+        video: true,
+      });
+      const videoTrack = screenStream.getVideoTracks()[0];
+
+      setStream(screenStream);
+      setTrack(videoTrack);
+
+      if (videoRef.current) {
+        videoRef.current.srcObject = screenStream;
+      }
+
+      console.log("Screen capture started!");
+    } catch (err) {
+      console.error("Error starting screen capture:", err);
+    }
+  };
+
+  const captureScreen = async () => {
+    if (!track) {
+      console.error("No active screen capture track.");
+      return;
+    }
+
+    try {
+      const imageCapture = new ImageCapture(track);
+      const bitmap = await imageCapture.grabFrame();
+
+      // Desired compression settings
+      const targetWidth = 1500; // Adjust to your needs
+      const targetHeight = (bitmap.height / bitmap.width) * targetWidth; // Maintain aspect ratio
+      const quality = 1; // Quality factor (0 to 1)
+
+      // Create a smaller canvas
+      const canvas = document.createElement("canvas");
+      canvas.width = targetWidth;
+      canvas.height = targetHeight;
+      const ctx = canvas.getContext("2d");
+      if (!ctx) return;
+
+      // Draw the scaled-down image on the canvas
+      ctx.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+
+      // Convert the canvas to a compressed base64 image
+      const compressedImageData = canvas.toDataURL("image/jpeg", quality); // Use "image/jpeg" for smaller file sizes
+
+      // console.log("Compressed Image Data:", compressedImageData);
+
+      // chunks.forEach((chunk, index) => {
+      //   websocketRef.current.emit("image_chunk", {
+      //     chunk,
+      //     isLast: index === chunks.length - 1,
+      //   });
+      // });
+
+      console.log("Screenshot captured and sent successfully!");
+      return compressedImageData;
+    } catch (err) {
+      console.error("Error capturing screen:", err);
+    }
+  };
+
+  const stopScreenCapture = () => {
+    if (track) {
+      track.stop();
+      setStream(null);
+      setTrack(null);
+
+      if (videoRef.current) {
+        videoRef.current.srcObject = null;
+      }
+
+      console.log("Screen capture stopped!");
+    }
+  };
+  const chunkData = (data, chunkSize) => {
+    const chunks = [];
+    for (let i = 0; i < data.length; i += chunkSize) {
+      chunks.push(data.slice(i, i + chunkSize));
+    }
+    return chunks;
+  };
 
   useEffect(() => {
     websocketRef.current = io("http://localhost:5000", {
@@ -40,19 +160,8 @@ export default function MicrophoneComponent() {
     });
 
     // Initialize voice detection
-    const initializeVoiceDetection = async () => {
-      try {
-        const stream = await navigator.mediaDevices.getUserMedia({
-          audio: true,
-        });
-        detectSilence(stream);
-        console.log("Voice detection initialized");
-      } catch (error) {
-        console.error("Error initializing voice detection:", error);
-      }
-    };
 
-    initializeVoiceDetection();
+    // initializeVoiceDetection();
 
     websocketRef.current.on("interview_end", () => {
       console.log("WebSocket connection established");
@@ -73,7 +182,7 @@ export default function MicrophoneComponent() {
         ...interviewer,
         isSpeaking: false,
       })); // Received data (assume it's an array)
-
+      console.log("speakersssssss", inte);
       setSpeakers((prevSpeakers) => {
         if (prevSpeakers.length === 0) {
           // Initialize only if speakers are not set
@@ -100,6 +209,27 @@ export default function MicrophoneComponent() {
       }
     };
   }, []);
+
+  // useEffect(() => {
+  //   const initializeVoiceDetection = async () => {
+  //     try {
+  //       const stream = await navigator.mediaDevices.getUserMedia({
+  //         audio: {
+  //           noiseSuppression: true, // Reduces background noise
+  //           echoCancellation: true, // Cancels echo
+  //           autoGainControl: true, // Adjusts volume automatically
+  //         },
+  //       });
+  //       detectSilence(stream);
+  //       console.log("Voice detection initialized");
+  //     } catch (error) {
+  //       console.error("Error initializing voice detection:", error);
+  //     }
+  //   };
+  //   if (!isPlaying) {
+  //     initializeVoiceDetection();
+  //   }
+  // }, [isPlaying]);
   // Fetch initial data on load
   // useEffect(() => {
   //   const fetchDataOnLoad = async () => {
@@ -120,6 +250,9 @@ export default function MicrophoneComponent() {
     silenceThreshold = -30,
     silenceDuration = 2000
   ) => {
+    if (isPlaying) {
+      return;
+    }
     const audioContext = new AudioContext();
     const analyser = audioContext.createAnalyser();
     const microphone = audioContext.createMediaStreamSource(stream);
@@ -141,15 +274,17 @@ export default function MicrophoneComponent() {
       const volume = Math.sqrt(sumSquares / dataArray.length);
       var volumeDb = 20 * Math.log10(volume);
 
-      console.log("Current volume:", volumeDb, "isRecording:", isRecording);
+      // console.log("Current volume:", volumeDb, "isRecording:", isRecording);
 
       if (volumeDb > silenceThreshold) {
         // Sound detected
         if (!isRecording && !isPlaying) {
-          console.log("Sound detected, starting recording");
+          // console.log("Sound detected, starting recording");
           // startRecording();
           setVoice_detected(true);
           setIsRecording(true);
+          setIsPlaying(false);
+
           console.log("lets check isRecording", isRecording);
         }
         // Clear any existing silence timeout
@@ -197,10 +332,20 @@ export default function MicrophoneComponent() {
     // if (!isRecording) return;
 
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      // await captureScreen();
+      var ss = await captureScreen();
+      websocketRef.current.emit("screen_capture", ss);
+      const stream = await navigator.mediaDevices.getUserMedia({
+        audio: {
+          noiseSuppression: true, // Reduces background noise
+          echoCancellation: true, // Cancels echo
+          autoGainControl: true, // Adjusts volume automatically
+        },
+      });
       mediaRecorderRef.current = new MediaRecorder(stream);
       // if (isRecording)
       mediaRecorderRef.current.ondataavailable = (event) => {
+        console.log("recording.....");
         if (websocketRef.current && event.data.size > 0) {
           const reader = new FileReader();
           reader.onload = () => {
@@ -219,9 +364,22 @@ export default function MicrophoneComponent() {
       websocketRef.current.emit("start");
       console.log("Recording started successfully, isRecording:", isRecording);
 
-      mediaRecorderRef.current.onstop = () => {
+      mediaRecorderRef.current.onstop = async () => {
         setIsRecording(false);
-        websocketRef.current.emit("stop", "interview");
+        var ss = await captureScreen();
+        websocketRef.current.emit("screen_capture", ss);
+        // console.log(ss);
+        // console.log(typeof CapturedScreen);
+        // console.log(toString(CapturedScreen));
+        // console.log(typeof toString(CapturedScreen));
+        // console.log(screenshot);
+
+        // websocketRef.current.emit("screen_capture", CapturedScreen);
+
+        websocketRef.current.emit("stop", {
+          type: "interview",
+          image: "CapturedScreen",
+        });
         console.log("Recording stopped, isRecording:", false);
       };
     } catch (error) {
@@ -427,10 +585,43 @@ export default function MicrophoneComponent() {
                 )}
               </div>
             )} */}
-            <div
-              className="w-full border-4 xl:border-dashed
+            <div>
+              <h1>Screen Capture with Preview</h1>
+              <button onClick={startScreenCapture} disabled={!!stream}>
+                Start Screen Capture
+              </button>
+              <button onClick={captureScreen} disabled={!track}>
+                Capture Screenshot
+              </button>
+              <button onClick={stopScreenCapture} disabled={!track}>
+                Stop Screen Capture
+              </button>
+              <div
+                className="w-full border-4 xl:border-dashed
  rounded-2xl h-[70vh]  flex items-center justify-center"
-            >
+              >
+                <div className="w-full h-full flex flex-col items-center justify-center">
+                  <video
+                    ref={videoRef}
+                    autoPlay
+                    muted
+                    className="w-full h-full object-contain "
+                  ></video>
+
+                  {/* {screenshot && (
+                    <div className="mt-4 w-full">
+                      <h3 className="text-lg font-semibold text-center">
+                        Screenshot:
+                      </h3>
+                      <img
+                        src={screenshot}
+                        alt="Captured Screenshot"
+                        className="w-full h-auto border border-gray-300 rounded-lg mt-2"
+                      />
+                    </div>
+                  )} */}
+                </div>
+              </div>{" "}
               <p className="text-white text-xl">Full Height and Width Box</p>
             </div>{" "}
             <div className="flex z-50 items-center justify-center w-full relative">

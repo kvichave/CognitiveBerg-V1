@@ -45,14 +45,14 @@ export default function MicrophoneComponent() {
         const stream = await navigator.mediaDevices.getUserMedia({
           audio: true,
         });
-        detectSilence(stream);
+        // detectSilence(stream);
         console.log("Voice detection initialized");
       } catch (error) {
         console.error("Error initializing voice detection:", error);
       }
     };
 
-    initializeVoiceDetection();
+    // initializeVoiceDetection();
 
     websocketRef.current.on("interview_end", () => {
       console.log("WebSocket connection established");
@@ -197,7 +197,13 @@ export default function MicrophoneComponent() {
     // if (!isRecording) return;
 
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const stream = await navigator.mediaDevices.getUserMedia({
+        audio: {
+          noiseSuppression: true, // Reduces background noise
+          echoCancellation: true, // Cancels echo
+          autoGainControl: true, // Adjusts volume automatically
+        },
+      });
       mediaRecorderRef.current = new MediaRecorder(stream);
       // if (isRecording)
       mediaRecorderRef.current.ondataavailable = (event) => {
@@ -221,7 +227,9 @@ export default function MicrophoneComponent() {
 
       mediaRecorderRef.current.onstop = () => {
         setIsRecording(false);
-        websocketRef.current.emit("stop", "interview");
+        websocketRef.current.emit("stop", {
+          type: "interview",
+        });
         console.log("Recording stopped, isRecording:", false);
       };
     } catch (error) {
