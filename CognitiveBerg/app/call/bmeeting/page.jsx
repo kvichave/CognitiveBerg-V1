@@ -163,7 +163,7 @@ export default function MicrophoneComponent() {
 
     // initializeVoiceDetection();
 
-    websocketRef.current.on("interview_end", () => {
+    websocketRef.current.on("meeting_end", () => {
       console.log("WebSocket connection established");
       router.push("/dashboard");
     });
@@ -177,9 +177,9 @@ export default function MicrophoneComponent() {
       //   "WebSocket audio_urls event received",
       //   files.interviewers[0]
       // );
-      const inter = files.interviewers;
-      const inte = inter.map((interviewer) => ({
-        ...interviewer,
+      const inter = files.investors;
+      const inte = inter.map((investor) => ({
+        ...investor,
         isSpeaking: false,
       })); // Received data (assume it's an array)
       console.log("speakersssssss", inte);
@@ -377,8 +377,7 @@ export default function MicrophoneComponent() {
         // websocketRef.current.emit("screen_capture", CapturedScreen);
 
         websocketRef.current.emit("stop", {
-          type: "interview",
-          image: "CapturedScreen",
+          type: "bmeeting",
         });
         console.log("Recording stopped, isRecording:", false);
       };
@@ -420,15 +419,10 @@ export default function MicrophoneComponent() {
   useEffect(() => {
     const playAudio = () => {
       if (currentIndex < audiourls.length) {
-        // if (reply[0]?.length > 1) {
-        //   setMsg(reply[0][currentIndex]["message"]);
-        // } else if (reply.length === 1) {
-        //   setMsg(reply[0].message || reply[0][0]?.message);
-        // } else if (reply[0]?.length === 1) {
-        //   setMsg(reply[0][0]["message"]);
-        // }
-
-        const audio = new Audio(audiourls[currentIndex]);
+        const audioUrlWithTimestamp = `${
+          audiourls[currentIndex]
+        }?t=${new Date().getTime()}`;
+        const audio = new Audio(audioUrlWithTimestamp);
         const urlstring = audiourls[currentIndex];
         const match = urlstring.match(/audios\/(\d+)\.mp3/);
         const result = parseInt(match[1]);
@@ -532,7 +526,7 @@ export default function MicrophoneComponent() {
                     <PinContainer title={user.message}>
                       <Interviewercard
                         isSpeaking={user.isSpeaking}
-                        userName={user.interviewer_name}
+                        userName={user.investor_name}
                         imageLink={
                           "https://static.vecteezy.com/system/resources/previews/008/332/204/non_2x/3d-young-smiling-man-with-dark-sin-tone-and-black-hair-people-cartoon-cute-minimal-character-style-illustration-user-avatar-in-round-frame-isolated-on-white-background-vector.jpg"
                         }
@@ -541,7 +535,7 @@ export default function MicrophoneComponent() {
                   ) : (
                     <Interviewercard
                       isSpeaking={user.isSpeaking}
-                      userName={user.interviewer_name}
+                      userName={user.investor_name}
                       imageLink={
                         "https://static.vecteezy.com/system/resources/previews/008/332/204/non_2x/3d-young-smiling-man-with-dark-sin-tone-and-black-hair-people-cartoon-cute-minimal-character-style-illustration-user-avatar-in-round-frame-isolated-on-white-background-vector.jpg"
                       }

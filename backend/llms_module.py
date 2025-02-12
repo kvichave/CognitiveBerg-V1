@@ -3,6 +3,15 @@ from groq import Groq
 import json
 import asyncio
 from chat_CRUD import add_data
+from elevenlabs import ElevenLabs
+from openai import OpenAI
+import base64
+
+Geminiclient = OpenAI(
+  base_url="https://openrouter.ai/api/v1",
+  api_key="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",
+)
+
 
 client = Groq(api_key="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")
 
@@ -86,7 +95,7 @@ To end the Interview give json output as:
 {"FLAG":"END"}
 **Initial Output Expectation:**
 Generate the introduction of all interviewers in the exact JSON format described, without deviations.
-
+the Output JSON should start with "data", Strict with the constraints
     '''
         },
     ]
@@ -110,10 +119,12 @@ Generate the introduction of all interviewers in the exact JSON format described
                     self.prompt.append({"role": "user", "content": reply})
                 print("whisper :: ",reply)
 
-                self.gorq_LLM(prompt=self.prompt)
         except Exception as e:
             print("error in Whisper:::",e)
             return "reset"
+        finally:
+            self.gorq_LLM(prompt=self.prompt)
+
 
 
     def gorq_LLM(self, prompt, add_to_history=True):
@@ -157,23 +168,45 @@ Generate the introduction of all interviewers in the exact JSON format described
             print("reply", reply)
             self.speakers(reply)
 
-    def text_to_speech(self, text, output_file, voice):
-        """Synchronously converts text to speech using edge-tts and saves the audio as an MP3 file."""
-        communicate = edge_tts.Communicate(text, voice)
-        loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(loop)
-        loop.run_until_complete(communicate.save(output_file))
-        loop.close()
+    # def text_to_speech(self, text, output_file, voice):
+    #     """Synchronously converts text to speech using edge-tts and saves the audio as an MP3 file."""
+    #     communicate = edge_tts.Communicate(text, voice)
+    #     loop = asyncio.new_event_loop()
+    #     asyncio.set_event_loop(loop)
+    #     loop.run_until_complete(communicate.save(output_file))
+    #     loop.close()
 
     outputPaths = []
+    
 
+    def convert_text_to_speech(self,text, voice_id,output_file):
+    
+        
+        client = ElevenLabs(
+            api_key="sk_88b376ba7df419dd3c6ed688cf4f3b354edcc40c341c9583",
+        )
+
+        # Generate the speech audio (returns a generator)
+        audio_generator = client.text_to_speech.convert(
+            voice_id=voice_id,
+            output_format="mp3_44100_128",
+            text=text,
+            model_id="eleven_multilingual_v2",
+        )
+
+        # Save the audio to a file
+        with open(output_file, "wb") as f:
+            for chunk in audio_generator:  # Iterate over the generator
+                f.write(chunk)
+
+        print("Audio saved as output.mp3")
     def speakers(self, json_data):
         self.outputPaths = []  # Initialize/clear the output paths
         print("In Speaker")
         voice_map = {
-            0: "en-US-BrianNeural",
-            1: "en-IN-NeerjaExpressiveNeural",
-            2: "en-US-ChristopherNeural",
+            0: "ODq5zmih8GrVes37Dizd",
+            1: "SAz9YHcvj6GT2YYXdXww",
+            2: "VR6AewLTigWG4xSOukaG",
         }
         for interviewer in json_data:
             if interviewer.get("message") is None:
@@ -182,12 +215,13 @@ Generate the introduction of all interviewers in the exact JSON format described
                 text = interviewer['message']
             output_file = f"AUDIOS/{interviewer['id']}.mp3"
             self.outputPaths.append(output_file)  # Append to the output list
-            voice = voice_map.get(interviewer['id'], 'en-US-BrianNeural')
-            self.text_to_speech(text, output_file, voice)
+            voice = voice_map.get(interviewer['id'], 'ODq5zmih8GrVes37Dizd')
+            self.convert_text_to_speech(text, voice,output_file)
 
         print("Generated audio files:", self.outputPaths)  # Ensure this shows the populated list
         return self.outputPaths  # Return the populated list
 
+    
 
 
 
@@ -252,7 +286,7 @@ Strict JSON format, one introduction per investor. Do not include additional det
         },
         {
             "investor_name": "Michael Johnson, Sustainability & Impact Advocate",
-            "message": "Hello, I'm Michael Johnson, the Sustainability & Impact Advocate. I'll evaluate your startup’s environmental and social impact.",
+            "message": "Hello, I'm Michael Johnson, the Sustainability & Impact Advocate. I'll evaluate your startup’s environmental and social impact.You can start now.",
             "id": 4
         }
     ]
@@ -308,57 +342,28 @@ During the presentation: Respond only with brief validations like slang (e.g., "
 Post-presentation: Questions should be concise and relevant, ensuring only one question at a time.
 Follow strict JSON formatting in every response.
 Goal:
-Ensure that the LLM emulates realistic, natural investor interactions during the pitch, providing short validation during pauses and thoughtful questions after the pitch concludes.'''
+Ensure that the LLM emulates realistic, natural investor interactions during the pitch, providing short validation during pauses and thoughtful questions after the pitch concludes.
+the json response should start with "data" '''
 
 
 
-    history=[
-    {
-      "role": "model",
-      "parts": [
-        "{\n  \"data\": [\n    {\n      \"investor_name\": \"Rajesh Sharma, Technology Specialist\",\n      \"message\": \"Hello, I'm Rajesh Sharma, the Technology Specialist for this panel.  I'll be focusing on the technical feasibility, scalability, and innovation of your AI/ML solution.\",\n      \"id\": 0\n    },\n    {\n      \"investor_name\": \"Emily Patel, Finance Expert\",\n      \"message\": \"Hi, I'm Emily Patel, the Finance Expert. My focus will be on your revenue model, cost structure, and overall financial projections for this deepfake detection technology.\",\n      \"id\": 1\n    },\n    {\n      \"investor_name\": \"David Lee, Marketing & Sales Strategist\",\n      \"message\": \"Hello, I'm David Lee, the Marketing & Sales Strategist. I'll be evaluating your go-to-market strategy, target audience, and competitive analysis within the deepfake detection market.\",\n      \"id\": 2\n    },\n    {\n      \"investor_name\": \"Sophia Gupta, Operations Specialist\",\n      \"message\": \"Hi, I'm Sophia Gupta, the Operations Specialist.  I'll be assessing the operational scalability, team capabilities, and overall execution plan for your solution.\",\n      \"id\": 3\n    },\n    {\n      \"investor_name\": \"Michael Johnson, Sustainability & Impact Advocate\",\n      \"message\": \"Hello, I'm Michael Johnson, the Sustainability & Impact Advocate. My focus will be on the ethical considerations and societal impact of your deepfake detection technology.\",\n      \"id\": 4\n    }\n  ]\n}",
-      ],
-    },
+    history=[{"role": "system", "content": gemini_prompt}
    
   ]
     LLM_reply=""
 
-    def upload_to_gemini(path, mime_type=None):
-        """Uploads the given file to Gemini.
-
-        See https://ai.google.dev/gemini-api/docs/prompting_with_media
-        """
-        file = genai.upload_file(path, mime_type=mime_type)
-        print(f"Uploaded file '{file.display_name}' as: {file.uri}")
-        return file
+    
 
     # Create the model
-    generation_config = {
-    "temperature": 1,
-    "top_p": 0.95,
-    "top_k": 40,
-    "max_output_tokens": 8192,
-    "response_mime_type": "application/json",
-    }
-
-    model = genai.GenerativeModel(
-    model_name="gemini-1.5-flash",
-    generation_config=generation_config,
-    system_instruction=gemini_prompt,
-    )
-
-    # TODO Make these files available on the local file system
-    # You may need to update the file paths
-    # files = [
-    #   upload_to_gemini("Screenshot from 2025-01-12 21-16-54.png", mime_type="image/png"),
-    # ]
-
-    chat_session = model.start_chat(
-    history=history
-    )
 
 
 
+    import base64
+
+    def encode_image(self,image_path):
+        """Encodes an image to Base64 format"""
+        with open(image_path, "rb") as image_file:
+            return base64.b64encode(image_file.read()).decode("utf-8")
 
     def clear_prompt(self):
         self.history = [self.history[0]]
@@ -372,7 +377,7 @@ Ensure that the LLM emulates realistic, natural investor interactions during the
                 response_format="verbose_json",
             )
             reply = str(transcription.text)
-
+            print("whisper reply = ",reply)
             if add_to_history:
                 self.history.append({"role": "user", "content": reply})
             self.gemini_LLM(reply,image)
@@ -380,24 +385,69 @@ Ensure that the LLM emulates realistic, natural investor interactions during the
     def gemini_LLM(self, reply,image, add_to_history=True):
         print("in LLM")
         # Synchronous API call to the LLM
-        if image:
-            file1 = PIL.Image.open("received_img/screenshot1.jpg")
-            file2 = PIL.Image.open("received_img/screenshot2.jpg")
+        try:
+            if image:
+                
+                file1 = self.encode_image("received_img/screenshot1.jpg")
+                file2 = self.encode_image("received_img/screenshot2.jpg")
+                self.history.append({"role": "user", "content": [
+                            {
+                                    "type": "text",
+                                    "text": reply
+                            },
+                            {
+                                    "type": "image_url",
+                                    "image_url": {
+                                            "url": f"data:image/png;base64,{file1}","url": f"data:image/png;base64,{file2}"
+                                    }
+                            }
+                    ]})
 
-            response = self.chat_session.send_message([file1,file2, reply])
-        
-        else:
-            response = self.chat_session.send_message(reply)
+                response = Geminiclient.chat.completions.create(
+                        model="google/learnlm-1.5-pro-experimental:free",
+                        messages=self.history,
+                        stream=False,
+                        
+                        response_format= {
+                        "type": "json_object"
+                        }
+                )
+                # print("History: ",self.history)
+
+                print(response)
+
+
+            else:
+                self.history.append({"role": "user", "content": [
+                            {
+                                    "type": "text",
+                                    "text": reply
+                            },
+                            
+                    ]})
+                response = Geminiclient.chat.completions.create(
+                        model="google/learnlm-1.5-pro-experimental:free",
+                        messages=[self.history],
+                        stream=False,
+                        
+                        response_format= {
+                        "type": "json_object"
+                        }
+                )
+                
+        except Exception as e:
+            print("error in LLM:::",e)
+            
+
 
         # reply = reply.replace("'", '"')
         # reply = reply.replace('\\"', "'")
 
-
-        print(response.text)
+        print(response.choices[0].message.content)
         # if reply[0] != "[":
         #     reply = "[" + str(completion.choices[0].message.content) + "]"
 
-        reply = json.loads(response.text)
+        reply = json.loads(response.choices[0].message.content)
         if reply.get("FLAG") == "END":
             # add_data(self.his[1:],usetype=str(self.userDetails['scenario']))
             self.LLM_reply=reply.get("FLAG")
@@ -405,43 +455,73 @@ Ensure that the LLM emulates realistic, natural investor interactions during the
             print("reply", reply)
             return "END"
         else:
-            reply=reply["data"]
+            if reply.get("data"):
+                reply=reply.get("data")
+                print("in if",reply)
+            else:
+                reply=reply
+                print("in else",type(reply),reply)
+                # print("in else",reply)
+
             if add_to_history:
                 self.history.append({"role": "assistant", "content": str(reply)})
             self.LLM_reply=reply
             
-            print("reply", reply)
+            print("llm reply", reply)
             self.speakers(reply)
 
-    def text_to_speech(self, text, output_file, voice):
-        """Synchronously converts text to speech using edge-tts and saves the audio as an MP3 file."""
-        communicate = edge_tts.Communicate(text, voice)
-        loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(loop)
-        loop.run_until_complete(communicate.save(output_file))
-        loop.close()
+    def convert_text_to_speech(self,text, voice_id,output_file):
+    
+        
+        client = ElevenLabs(
+            api_key="sk_8038c3750a38d21eac050fe09f1dd69a703c6f7eeb7c4603",
+        )
 
-    outputPaths = []
+        # Generate the speech audio (returns a generator)
+        audio_generator = client.text_to_speech.convert(
+            voice_id=voice_id,
+            output_format="mp3_44100_128",
+            text=text,
+            model_id="eleven_multilingual_v2",
+        )
 
+        # Save the audio to a file
+        with open(output_file, "wb") as f:
+            for chunk in audio_generator:  # Iterate over the generator
+                f.write(chunk)
+
+        print("Audio saved as output.mp3")
     def speakers(self, json_data):
         self.outputPaths = []  # Initialize/clear the output paths
         print("In Speaker")
         voice_map = {
-            0: "en-US-BrianNeural",
-            1: "en-IN-NeerjaExpressiveNeural",
-            2: "en-US-ChristopherNeural",
-            3: "en-US-EricNeural",
-            4: "en-US-AriaNeural"
+            0: "wD6AxxDQzhi2E9kMbk9t",
+            1: "ftDdhfYtmfGP0tFlBYA1",
+            2: "JBFqnCBsd6RMkjVDRZzb",
+            3: "tLGhEubY0Pyc5mxjkJSJ",
+            4: "TX3LPaxmHKxFdv7VOQHJ",
+            5: "Yko7PKHZNXotIFUBG7I9",
         }
-        for investor in json_data:
-            if investor.get("message") is None:
-                text = investor['question']
+        print("json_data",json_data)
+        if type(json_data) == list:
+            for interviewer in json_data:
+                if interviewer.get("message") is None:
+                    text = interviewer['question']
+                else:
+                    text = interviewer['message']
+                output_file = f"AUDIOS/{interviewer['id']}.mp3"
+                self.outputPaths.append(output_file)  # Append to the output list
+                voice = voice_map.get(interviewer['id'], 'ODq5zmih8GrVes37Dizd')
+                self.convert_text_to_speech(text, voice,output_file)
+        else:
+            if json_data.get("message") is None:
+                    text = json_data['question']
             else:
-                text = investor['message']
-            output_file = f"AUDIOS/{investor['id']}.mp3"
+                text = json_data['message']
+            output_file = f"AUDIOS/{json_data['id']}.mp3"
             self.outputPaths.append(output_file)  # Append to the output list
-            voice = voice_map.get(investor['id'], 'en-US-BrianNeural')
-            self.text_to_speech(text, output_file, voice)
+            voice = voice_map.get(json_data['id'], 'ODq5zmih8GrVes37Dizd')
+            self.convert_text_to_speech(text, voice,output_file)
 
         print("Generated audio files:", self.outputPaths)  # Ensure this shows the populated list
         return self.outputPaths  # Return the populated list

@@ -270,15 +270,11 @@ export default function MicrophoneComponent() {
   useEffect(() => {
     const playAudio = () => {
       if (currentIndex < audiourls.length) {
-        // if (reply[0]?.length > 1) {
-        //   setMsg(reply[0][currentIndex]["message"]);
-        // } else if (reply.length === 1) {
-        //   setMsg(reply[0].message || reply[0][0]?.message);
-        // } else if (reply[0]?.length === 1) {
-        //   setMsg(reply[0][0]["message"]);
-        // }
+        const audioUrlWithTimestamp = `${
+          audiourls[currentIndex]
+        }?t=${new Date().getTime()}`;
+        const audio = new Audio(audioUrlWithTimestamp);
 
-        const audio = new Audio(audiourls[currentIndex]);
         const urlstring = audiourls[currentIndex];
         const match = urlstring.match(/audios\/(\d+)\.mp3/);
         const result = parseInt(match[1]);

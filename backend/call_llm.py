@@ -68,15 +68,15 @@ def handle_image_chunk(data):
     print(f"Screenshot saved: {image_path}")
     return {"success": True, "path": image_path}
 
-def save_image(base64_image):
-    import base64
+# def save_image(base64_image):
+#     import base64
 
-    # Remove "data:image/png;base64," prefix
-    base64_image = base64_image.split(",")[1]
+#     # Remove "data:image/png;base64," prefix
+#     base64_image = base64_image.split(",")[1]
 
-    with open("captured_image.png", "wb") as f:
-        f.write(base64.b64decode(base64_image))
-        print("Image saved as 'captured_image.png'")
+#     with open("captured_image.png", "wb") as f:
+#         f.write(base64.b64decode(base64_image))
+#         print("Image saved as 'captured_image.png'")
 
 @socketio.on("stop")
 def on_stop(data):
@@ -110,12 +110,12 @@ def on_stop(data):
             elif data.get("type") == "bmeeting":
                 GEMINIobj.groq_whisper(input=wav_file_path,image=True)
                 audio_urls = [f'http://127.0.0.1:5000/audios/{file.split("/")[-1]}' for file in GEMINIobj.outputPaths]
-                interviewers=GEMINIobj.LLM_reply
-                if interviewers =="END":
-                    socketio.emit("interview_end", {"message": "Interview ended"})
+                investors=GEMINIobj.LLM_reply
+                if investors =="END":
+                    socketio.emit("meeting_end", {"message": "meeting ended"})
                 print("Generated audio paths:", audio_urls)
-                socketio.emit("audio_urls", {"files": audio_urls,"interviewers":interviewers})
-
+                socketio.emit("audio_urls", {"files": audio_urls,"investors":investors})
+    
     except Exception as e:
         print(f"Error during transcription: {e}")
     finally:
@@ -142,6 +142,7 @@ def handle_disconnect():
     saved_prompt=objectApp.prompt[1:]
     session["saved_prompt"] = saved_prompt
     objectApp.clear_prompt()
+    GEMINIobj.clear_prompt()
     if audio_file:
         audio_file.close()
         print("File closed due to client disconnect.")
