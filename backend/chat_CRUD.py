@@ -8,6 +8,7 @@ client = pymongo.MongoClient("mongodb://localhost:27017/")
 
 
 def add_data(conversation,usetype):
+    print("\n\nInside add_data---------------------------------------------------\n\n")
     user_id=session.get("user_id")
     email=session.get("email")
     today = datetime.date.today()

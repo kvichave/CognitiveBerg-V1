@@ -48,7 +48,7 @@ def test():
     return "success"
 
 def get_db_connection():
-    conn = sqlite3.connect('/home/kunal/Documents/CognitiveBerg/clerkData.db')
+    conn = sqlite3.connect('/home/kunal/Documents/major_project/CognitiveBerg/clerkData.db')
     conn.row_factory = sqlite3.Row
     return conn
 def user_exists(userid):
@@ -56,6 +56,14 @@ def user_exists(userid):
     cursor = conn.cursor()
     cursor.execute('SELECT COUNT(1) FROM user_profile WHERE clerk_id = ?', (userid,))
     exists = cursor.fetchone()[0]
+    conn.close()
+    return exists
+
+def get_user(userid):
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute('SELECT * FROM user_profile WHERE clerk_id = ?', (userid,))
+    exists = cursor.fetchone()
     conn.close()
     return exists
 

@@ -70,7 +70,8 @@ def extractClerk(data):
 
 
 def get_db_connection():
-    conn = sqlite3.connect('/home/kunal/Documents/CognitiveBerg/clerkData.db')
+    conn = sqlite3.connect('/home/kunal/Documents/major_project/CognitiveBerg/clerkData.db')
+    # /home/kunal/Documents/major_project/CognitiveBerg
     conn.row_factory = sqlite3.Row  # Allows us to return rows as dictionaries
     return conn
 

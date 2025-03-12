@@ -9,7 +9,7 @@ import base64
 
 Geminiclient = OpenAI(
   base_url="https://openrouter.ai/api/v1",
-  api_key="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",
+  api_key="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",
 )
 
 
@@ -59,6 +59,8 @@ Example questions for each combination of experience and interview type.
 
 
 **Output Format for the Introduction** (ensure strict compliance):
+the output should start with "data"  
+
 {"data":[
     {
         "interviewer_name": "Rajesh Sharma, Engineering Manager",
@@ -95,7 +97,7 @@ To end the Interview give json output as:
 {"FLAG":"END"}
 **Initial Output Expectation:**
 Generate the introduction of all interviewers in the exact JSON format described, without deviations.
-the Output JSON should start with "data", Strict with the constraints
+the output should start with "data"  
     '''
         },
     ]
@@ -168,13 +170,13 @@ the Output JSON should start with "data", Strict with the constraints
             print("reply", reply)
             self.speakers(reply)
 
-    # def text_to_speech(self, text, output_file, voice):
-    #     """Synchronously converts text to speech using edge-tts and saves the audio as an MP3 file."""
-    #     communicate = edge_tts.Communicate(text, voice)
-    #     loop = asyncio.new_event_loop()
-    #     asyncio.set_event_loop(loop)
-    #     loop.run_until_complete(communicate.save(output_file))
-    #     loop.close()
+    def text_to_speech(self, text, output_file, voice):
+        """Synchronously converts text to speech using edge-tts and saves the audio as an MP3 file."""
+        communicate = edge_tts.Communicate(text, voice)
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        loop.run_until_complete(communicate.save(output_file))
+        loop.close()
 
     outputPaths = []
     
@@ -204,9 +206,9 @@ the Output JSON should start with "data", Strict with the constraints
         self.outputPaths = []  # Initialize/clear the output paths
         print("In Speaker")
         voice_map = {
-            0: "ODq5zmih8GrVes37Dizd",
-            1: "SAz9YHcvj6GT2YYXdXww",
-            2: "VR6AewLTigWG4xSOukaG",
+            0: "en-GB-RyanNeural",
+            1: "en-IE-EmilyNeural",
+            2: "en-HK-SamNeural",
         }
         for interviewer in json_data:
             if interviewer.get("message") is None:
@@ -215,8 +217,8 @@ the Output JSON should start with "data", Strict with the constraints
                 text = interviewer['message']
             output_file = f"AUDIOS/{interviewer['id']}.mp3"
             self.outputPaths.append(output_file)  # Append to the output list
-            voice = voice_map.get(interviewer['id'], 'ODq5zmih8GrVes37Dizd')
-            self.convert_text_to_speech(text, voice,output_file)
+            voice = voice_map.get(interviewer['id'], 'en-HK-SamNeural')
+            self.text_to_speech(text=text, voice=voice,output_file=output_file)
 
         print("Generated audio files:", self.outputPaths)  # Ensure this shows the populated list
         return self.outputPaths  # Return the populated list
@@ -232,8 +234,7 @@ the Output JSON should start with "data", Strict with the constraints
 
 
 import os
-import google.generativeai as genai
-genai.configure(api_key="AIzaSyAM1sC_dU-O42kSegGCkXuZW5MU1EWeBws")
+
 import PIL.Image
 
 
@@ -291,6 +292,8 @@ Strict JSON format, one introduction per investor. Do not include additional det
         }
     ]
 }
+last investor should say "You can start now."
+the conversation should start with introduction of all investors in the exact JSON format described, without deviations.
 During the Presentation:
 For any pause or validation request by the presenter:
 
@@ -343,7 +346,8 @@ Post-presentation: Questions should be concise and relevant, ensuring only one q
 Follow strict JSON formatting in every response.
 Goal:
 Ensure that the LLM emulates realistic, natural investor interactions during the pitch, providing short validation during pauses and thoughtful questions after the pitch concludes.
-the json response should start with "data" '''
+the json response should start with "data
+" '''
 
 
 
@@ -404,7 +408,7 @@ the json response should start with "data" '''
                     ]})
 
                 response = Geminiclient.chat.completions.create(
-                        model="google/learnlm-1.5-pro-experimental:free",
+                        model="google/gemini-2.0-flash-lite-preview-02-05:free",
                         messages=self.history,
                         stream=False,
                         
@@ -470,37 +474,47 @@ the json response should start with "data" '''
             print("llm reply", reply)
             self.speakers(reply)
 
-    def convert_text_to_speech(self,text, voice_id,output_file):
+    # def convert_text_to_speech(self,text, voice_id,output_file):
     
         
-        client = ElevenLabs(
-            api_key="sk_8038c3750a38d21eac050fe09f1dd69a703c6f7eeb7c4603",
-        )
+    #     client = ElevenLabs(
+    #         api_key="sk_8038c3750a38d21eac050fe09f1dd69a703c6f7eeb7c4603",
+    #     )
 
-        # Generate the speech audio (returns a generator)
-        audio_generator = client.text_to_speech.convert(
-            voice_id=voice_id,
-            output_format="mp3_44100_128",
-            text=text,
-            model_id="eleven_multilingual_v2",
-        )
+    #     # Generate the speech audio (returns a generator)
+    #     audio_generator = client.text_to_speech.convert(
+    #         voice_id=voice_id,
+    #         output_format="mp3_44100_128",
+    #         text=text,
+    #         model_id="eleven_multilingual_v2",
+    #     )
 
-        # Save the audio to a file
-        with open(output_file, "wb") as f:
-            for chunk in audio_generator:  # Iterate over the generator
-                f.write(chunk)
+    #     # Save the audio to a file
+    #     with open(output_file, "wb") as f:
+    #         for chunk in audio_generator:  # Iterate over the generator
+    #             f.write(chunk)
 
-        print("Audio saved as output.mp3")
+    #     print("Audio saved as output.mp3")
+
+    def text_to_speech(self, text, output_file, voice):
+        """Synchronously converts text to speech using edge-tts and saves the audio as an MP3 file."""
+        communicate = edge_tts.Communicate(text, voice)
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        loop.run_until_complete(communicate.save(output_file))
+        loop.close()
+
+    outputPaths = []
     def speakers(self, json_data):
         self.outputPaths = []  # Initialize/clear the output paths
         print("In Speaker")
         voice_map = {
-            0: "wD6AxxDQzhi2E9kMbk9t",
-            1: "ftDdhfYtmfGP0tFlBYA1",
-            2: "JBFqnCBsd6RMkjVDRZzb",
-            3: "tLGhEubY0Pyc5mxjkJSJ",
-            4: "TX3LPaxmHKxFdv7VOQHJ",
-            5: "Yko7PKHZNXotIFUBG7I9",
+            0: "en-US-RogerNeural",
+            1: "en-IN-NeerjaExpressiveNeural",
+            2: "en-HK-SamNeural",
+            3: "en-SG-LunaNeural",
+            4: "en-GB-RyanNeural",
+            5: "en-SG-WayneNeural",
         }
         print("json_data",json_data)
         if type(json_data) == list:
@@ -511,8 +525,8 @@ the json response should start with "data" '''
                     text = interviewer['message']
                 output_file = f"AUDIOS/{interviewer['id']}.mp3"
                 self.outputPaths.append(output_file)  # Append to the output list
-                voice = voice_map.get(interviewer['id'], 'ODq5zmih8GrVes37Dizd')
-                self.convert_text_to_speech(text, voice,output_file)
+                voice = voice_map.get(interviewer['id'], 'en-SG-WayneNeural')
+                self.text_to_speech(text=text, voice=voice,output_file=output_file)
         else:
             if json_data.get("message") is None:
                     text = json_data['question']
@@ -520,8 +534,8 @@ the json response should start with "data" '''
                 text = json_data['message']
             output_file = f"AUDIOS/{json_data['id']}.mp3"
             self.outputPaths.append(output_file)  # Append to the output list
-            voice = voice_map.get(json_data['id'], 'ODq5zmih8GrVes37Dizd')
-            self.convert_text_to_speech(text, voice,output_file)
+            voice = voice_map.get(json_data['id'], 'en-SG-WayneNeural')
+            self.text_to_speech(text=text, voice=voice,output_file=output_file)
 
         print("Generated audio files:", self.outputPaths)  # Ensure this shows the populated list
         return self.outputPaths  # Return the populated list

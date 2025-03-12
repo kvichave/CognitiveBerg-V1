@@ -93,7 +93,7 @@ export default function RootLayout({ children }) {
         </Sidebar>
 
         {/* <Dashboard /> */}
-        <div className="m-4 bg-black p-4 w-screen border border-neutral-200 dark:border-neutral-700 rounded-xl ">
+        <div className="m-4 bg-black p-4 w-screen border border-neutral-200 dark:border-neutral-700 rounded-xl overflow-y-scroll ">
           {children}
         </div>
       </div>
